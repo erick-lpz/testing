@@ -3,5 +3,14 @@
 </p>
 
 
-# alura-git
-Listas de cursos para controlar Git
+# Colaboradores
+
+Emanuel Manrique :green_circle:
+
+Luna Rogelio Maximiliano :green_circle:
+
+Lucas Gonzalez :green_circle:
+
+Facundo Martinez :green_circle:
+
+Erick López :green_circle:
