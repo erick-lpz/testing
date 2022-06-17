@@ -5,12 +5,12 @@
 
 # Colaboradores
 
-Emanuel Manrique :green_circle:
+- Emanuel Manrique :green_circle:
 
-Luna Rogelio Maximiliano :green_circle:
+- Luna Rogelio Maximiliano :green_circle:
 
-Lucas Gonzalez :green_circle:
+- Lucas Gonzalez :green_circle:
 
-Facundo Martinez :green_circle:
+- Facundo Martinez :green_circle:
 
-Erick López :green_circle:
+- Erick López :green_circle:
