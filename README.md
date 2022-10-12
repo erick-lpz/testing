@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://ibb.co/0tpbGxN"/>
+  <img src="<a href="https://ibb.co/0tpbGxN"><img src="https://i.ibb.co/xHKT7Nv/logo-workflix.png" alt="logo-workflix" border="0"></a>"/>
 </p>
 
 # Colaboradores
