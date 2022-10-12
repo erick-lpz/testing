@@ -1,5 +1,5 @@
 <p align="center">
- <a href="https://ibb.co/0tpbGxN"><img src="https://i.ibb.co/xHKT7Nv/logo-workflix.png" alt="logo-workflix" border="0" width="550" height="150"></a>
+ <a href="https://ibb.co/0tpbGxN"><img src="https://i.ibb.co/xHKT7Nv/logo-workflix.png" alt="logo-workflix" border="0" width="350" height="100"></a>
 </p>
 
 # TEAM
