@@ -101,34 +101,36 @@ if model is not None:
     cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
     # Crear DataFrame asegurándonos de incluir todas las columnas necesarias
-    df = pd.DataFrame({
-        'Age': [age],  # Asegúrate de agregar 'Age'
-        'Year': [year],
-        'Genetic_Risk': [genetic_risk],
-        'Air_Pollution': [air_pollution],
-        'Alcohol_Use': [alcohol_use],
-        'Smoking': [smoking],
-        'Obesity_Level': [obesity_level],
-        'Treatment_Cost_USD': [treatment_cost],
-        'Survival_Years': [survival_years],
-        'Gender': [gender],
-        'Country_Region': [country],
-        'Cancer_Type': [cancer_type],
-        'Cancer_Stage': [cancer_stage]
-    })
+df = pd.DataFrame({
+    'Age': [age],  # Asegúrate de agregar 'Age'
+    'Year': [year],
+    'Genetic_Risk': [genetic_risk],
+    'Air_Pollution': [air_pollution],
+    'Alcohol_Use': [alcohol_use],
+    'Smoking': [smoking],
+    'Obesity_Level': [obesity_level],
+    'Treatment_Cost_USD': [treatment_cost],
+    'Survival_Years': [survival_years],
+    'Gender': [gender],
+    'Country_Region': [country],
+    'Cancer_Type': [cancer_type],
+    'Cancer_Stage': [cancer_stage]
+})
 
-    # Verificar si el DataFrame contiene todas las columnas necesarias
-    model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
-    missing_cols = [col for col in model_columns if col not in df.columns]
-    if missing_cols:
-        st.error(f"Faltan las siguientes columnas: {', '.join(missing_cols)}")
-    else:
-        # Si todo está correcto, hacer la predicción
-        if st.button("Predecir severidad"):
-            try:
-                pred = model.predict(df)
-                st.success(f"La predicción de severidad es: {pred[0]}")
-            except Exception as e:
-                st.error(f"Ocurrió un error al predecir: {e}")
+# Transformar las columnas categóricas a one-hot encoding (variables dummy)
+df_encoded = pd.get_dummies(df, drop_first=True)
+
+# Verificar si el DataFrame contiene todas las columnas necesarias
+model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
+missing_cols = [col for col in model_columns if col not in df_encoded.columns]
+
+if missing_cols:
+    st.error(f"Faltan las siguientes columnas: {', '.join(missing_cols)}")
 else:
-    st.warning("No fue posible cargar ningún modelo para las predicciones.")
+    # Si todo está correcto, hacer la predicción
+    if st.button("Predecir severidad"):
+        try:
+            pred = model.predict(df_encoded)
+            st.success(f"La predicción de severidad es: {pred[0]}")
+        except Exception as e:
+            st.error(f"Ocurrió un error al predecir: {e}")
