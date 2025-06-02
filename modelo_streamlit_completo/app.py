@@ -7,13 +7,13 @@ from io import BytesIO
 
 st.title("Predicción de Severidad de Cáncer")
 
-# --- CONFIG: Ruta del modelo local ---
+# --- CONFIG: Ruta del modelo local --- 
 MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"  # El enlace directo al modelo en GitHub
 
 # --- INTERFAZ DE USUARIO: Selección del tipo de modelo ---
 model_choice = st.radio(
     "¿Cómo deseas cargar el modelo?",
-    ("Desde MLflow", "Desde archivo local", "Subir modelo manualmente")
+    ("Desde MLflow", "Desde GitHub", "Subir modelo manualmente")  # Cambiado "Desde archivo local" a "Desde GitHub"
 )
 
 model = None
@@ -56,8 +56,8 @@ if model_choice == "Desde MLflow":
         except Exception as e:
             mlflow_error = f"No se pudo conectar o cargar modelo desde MLflow: {e}"
 
-# --- Cargar modelo desde archivo local desde GitHub ---
-if model_choice == "Desde archivo local":
+# --- Cargar modelo desde GitHub --- 
+if model_choice == "Desde GitHub":
     try:
         st.info("Descargando modelo desde GitHub...")
         # Descargar el modelo desde GitHub
@@ -68,7 +68,7 @@ if model_choice == "Desde archivo local":
         else:
             st.error(f"No se pudo descargar el modelo desde GitHub. Código de estado: {response.status_code}")
     except Exception as e:
-        st.error(f"No se pudo cargar el modelo local desde GitHub: {e}")
+        st.error(f"No se pudo cargar el modelo desde GitHub: {e}")
 
 # --- Subir un archivo de modelo manualmente ---
 if model_choice == "Subir modelo manualmente":
@@ -101,36 +101,38 @@ if model is not None:
     cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
     # Crear DataFrame asegurándonos de incluir todas las columnas necesarias
-df = pd.DataFrame({
-    'Age': [age],  # Asegúrate de agregar 'Age'
-    'Year': [year],
-    'Genetic_Risk': [genetic_risk],
-    'Air_Pollution': [air_pollution],
-    'Alcohol_Use': [alcohol_use],
-    'Smoking': [smoking],
-    'Obesity_Level': [obesity_level],
-    'Treatment_Cost_USD': [treatment_cost],
-    'Survival_Years': [survival_years],
-    'Gender': [gender],
-    'Country_Region': [country],
-    'Cancer_Type': [cancer_type],
-    'Cancer_Stage': [cancer_stage]
-})
+    df = pd.DataFrame({
+        'Age': [age],  # Asegúrate de agregar 'Age'
+        'Year': [year],
+        'Genetic_Risk': [genetic_risk],
+        'Air_Pollution': [air_pollution],
+        'Alcohol_Use': [alcohol_use],
+        'Smoking': [smoking],
+        'Obesity_Level': [obesity_level],
+        'Treatment_Cost_USD': [treatment_cost],
+        'Survival_Years': [survival_years],
+        'Gender': [gender],
+        'Country_Region': [country],
+        'Cancer_Type': [cancer_type],
+        'Cancer_Stage': [cancer_stage]
+    })
 
-# Transformar las columnas categóricas a one-hot encoding (variables dummy)
-df_encoded = pd.get_dummies(df, drop_first=True)
+    # Transformar las columnas categóricas a one-hot encoding (variables dummy)
+    df_encoded = pd.get_dummies(df, drop_first=True)
 
-# Verificar si el DataFrame contiene todas las columnas necesarias
-model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
-missing_cols = [col for col in model_columns if col not in df_encoded.columns]
+    # Verificar si el DataFrame contiene todas las columnas necesarias
+    model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
+    missing_cols = [col for col in model_columns if col not in df_encoded.columns]
 
-if missing_cols:
-    st.error(f"Faltan las siguientes columnas: {', '.join(missing_cols)}")
+    if missing_cols:
+        st.error(f"Faltan las siguientes columnas: {', '.join(missing_cols)}")
+    else:
+        # Si todo está correcto, hacer la predicción
+        if st.button("Predecir severidad"):
+            try:
+                pred = model.predict(df_encoded)
+                st.success(f"La predicción de severidad es: {pred[0]}")
+            except Exception as e:
+                st.error(f"Ocurrió un error al predecir: {e}")
 else:
-    # Si todo está correcto, hacer la predicción
-    if st.button("Predecir severidad"):
-        try:
-            pred = model.predict(df_encoded)
-            st.success(f"La predicción de severidad es: {pred[0]}")
-        except Exception as e:
-            st.error(f"Ocurrió un error al predecir: {e}")
+    st.warning("No fue posible cargar ningún modelo para las predicciones.")
