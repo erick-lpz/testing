@@ -79,7 +79,9 @@ if model is not None:
     # **Mantener el año como estaba antes**
     year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
 
-    # Resto de las variables de entrada
+    # Asegúrate de que todas las columnas que el modelo espera estén presentes
+    age = st.number_input("Edad del paciente", min_value=18, max_value=100, value=50)
+
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
     air_pollution = st.slider("Contaminación del aire", 0.0, 100.0, 50.0)
     alcohol_use = st.slider("Consumo de alcohol", 0.0, 100.0, 20.0)
@@ -92,27 +94,35 @@ if model is not None:
     cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
     cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
-    # Predicción cuando el usuario hace clic en el botón
-    if st.button("Predecir severidad"):
-        df = pd.DataFrame({
-            'Year': [year],
-            'Genetic_Risk': [genetic_risk],
-            'Air_Pollution': [air_pollution],
-            'Alcohol_Use': [alcohol_use],
-            'Smoking': [smoking],
-            'Obesity_Level': [obesity_level],
-            'Treatment_Cost_USD': [treatment_cost],
-            'Survival_Years': [survival_years],
-            'Gender': [gender],
-            'Country_Region': [country],
-            'Cancer_Type': [cancer_type],
-            'Cancer_Stage': [cancer_stage]
-        })
+    # Crear DataFrame asegurándonos de incluir todas las columnas necesarias
+    df = pd.DataFrame({
+        'Age': [age],  # Asegúrate de agregar 'Age'
+        'Year': [year],
+        'Genetic_Risk': [genetic_risk],
+        'Air_Pollution': [air_pollution],
+        'Alcohol_Use': [alcohol_use],
+        'Smoking': [smoking],
+        'Obesity_Level': [obesity_level],
+        'Treatment_Cost_USD': [treatment_cost],
+        'Survival_Years': [survival_years],
+        'Gender': [gender],
+        'Country_Region': [country],
+        'Cancer_Type': [cancer_type],
+        'Cancer_Stage': [cancer_stage]
+    })
 
-        try:
-            pred = model.predict(df)
-            st.success(f"La predicción de severidad es: {pred[0]}")
-        except Exception as e:
-            st.error(f"Ocurrió un error al predecir: {e}")
+    # Verificar si el DataFrame contiene todas las columnas necesarias
+    model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
+    missing_cols = [col for col in model_columns if col not in df.columns]
+    if missing_cols:
+        st.error(f"Faltan las siguientes columnas: {', '.join(missing_cols)}")
+    else:
+        # Si todo está correcto, hacer la predicción
+        if st.button("Predecir severidad"):
+            try:
+                pred = model.predict(df)
+                st.success(f"La predicción de severidad es: {pred[0]}")
+            except Exception as e:
+                st.error(f"Ocurrió un error al predecir: {e}")
 else:
     st.warning("No fue posible cargar ningún modelo para las predicciones.")
