@@ -5,8 +5,8 @@ import joblib
 
 st.title("Predicción de Severidad de Cáncer")
 
-# --- CONFIG: Ruta del modelo local (siempre usa esta ruta para el .pkl) ---
-MODEL_PATH = "modelo_streamlit_completo/modelo.pkl"
+# --- CONFIG: Ruta del modelo local ---
+MODEL_PATH = "modelo_streamlit_completo/modelo.pkl"  # Este es el modelo local
 
 # --- INPUT: URL de MLflow (desde la interfaz, no hardcodeado) ---
 mlflow_uri = st.text_input(
@@ -22,16 +22,19 @@ mlflow_error = None
 if mlflow_uri:
     try:
         import mlflow
-        mlflow.set_tracking_uri(mlflow_uri)
+        mlflow.set_tracking_uri(mlflow_uri)  # Establecer URI de MLflow
         from mlflow.tracking import MlflowClient
         client = MlflowClient()
-        experiments = client.list_experiments()
+
+        # Intentar obtener los experimentos
+        experiments = client.list_experiments()  # Obtener los experimentos
         if experiments:
             experiment_names = [exp.name for exp in experiments]
             selected_exp = st.selectbox("Selecciona un experimento", experiment_names)
             exp_id = [exp.experiment_id for exp in experiments if exp.name == selected_exp][0]
             runs = client.search_runs(experiment_ids=[exp_id], order_by=["attributes.start_time desc"])
             run_ids = [run.info.run_id for run in runs]
+            
             if run_ids:
                 selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
                 model_uri = f"runs:/{selected_run}/model"
@@ -48,6 +51,8 @@ if mlflow_uri:
 if model is None:
     if mlflow_uri and mlflow_error:
         st.warning(f"{mlflow_error}\n\nPuedes dejar vacío el campo de MLflow y usar el modelo local.")
+    
+    # Verifica si el archivo .pkl existe y se puede cargar
     if os.path.exists(MODEL_PATH):
         try:
             model = joblib.load(MODEL_PATH)
@@ -56,10 +61,22 @@ if model is None:
             st.error(f"No se pudo cargar el modelo local: {e}")
     else:
         st.error(f"No se encontró el modelo local en {MODEL_PATH}. Sube el archivo modelo.pkl a esa ruta.")
+    
+    # Opción para subir un archivo .pkl manualmente si no se encuentra el modelo local
+    uploaded_file = st.file_uploader("Sube tu modelo (.pkl)", type="pkl")
+    if uploaded_file:
+        try:
+            model = joblib.load(uploaded_file)
+            st.success("Modelo cargado desde el archivo.")
+        except Exception as e:
+            st.error(f"Error al cargar el modelo desde el archivo: {e}")
 
 # --- Interfaz de usuario y predicción ---
 if model is not None:
+    # **Mantener el año como estaba antes**
     year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
+    
+    # Resto de las variables de entrada
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
     air_pollution = st.slider("Contaminación del aire", 0.0, 100.0, 50.0)
     alcohol_use = st.slider("Consumo de alcohol", 0.0, 100.0, 20.0)
@@ -72,6 +89,7 @@ if model is not None:
     cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
     cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
+    # Predicción cuando el usuario hace clic en el botón
     if st.button("Predecir severidad"):
         df = pd.DataFrame({
             'Year': [year],
@@ -87,6 +105,7 @@ if model is not None:
             'Cancer_Type': [cancer_type],
             'Cancer_Stage': [cancer_stage]
         })
+        
         try:
             pred = model.predict(df)
             st.success(f"La predicción de severidad es: {pred[0]}")
@@ -94,3 +113,4 @@ if model is not None:
             st.error(f"Ocurrió un error al predecir: {e}")
 else:
     st.warning("No fue posible cargar ningún modelo para las predicciones.")
+
