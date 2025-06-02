@@ -117,22 +117,26 @@ if model is not None:
         'Cancer_Stage': [cancer_stage]
     })
 
-    # Transformar las columnas categóricas a one-hot encoding (variables dummy)
+    # **Transformación en One-Hot Encoding**
     df_encoded = pd.get_dummies(df, drop_first=True)
 
     # Verificar si el DataFrame contiene todas las columnas necesarias
     model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
     missing_cols = [col for col in model_columns if col not in df_encoded.columns]
 
-    if missing_cols:
-        st.error(f"Faltan las siguientes columnas: {', '.join(missing_cols)}")
-    else:
-        # Si todo está correcto, hacer la predicción
-        if st.button("Predecir severidad"):
-            try:
-                pred = model.predict(df_encoded)
-                st.success(f"La predicción de severidad es: {pred[0]}")
-            except Exception as e:
-                st.error(f"Ocurrió un error al predecir: {e}")
+    # Si faltan columnas, las agregamos con ceros
+    for col in missing_cols:
+        df_encoded[col] = 0
+
+    # Asegurarnos que las columnas estén en el orden correcto
+    df_encoded = df_encoded[model_columns]
+
+    # Realizar la predicción
+    if st.button("Predecir severidad"):
+        try:
+            pred = model.predict(df_encoded)
+            st.success(f"La predicción de severidad es: {pred[0]}")
+        except Exception as e:
+            st.error(f"Ocurrió un error al predecir: {e}")
 else:
     st.warning("No fue posible cargar ningún modelo para las predicciones.")
