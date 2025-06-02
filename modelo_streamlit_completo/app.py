@@ -5,138 +5,113 @@ import joblib
 import requests
 from io import BytesIO
 
-st.title("Predicción de Severidad de Cáncer")
+st.set_page_config(page_title="Predicción de Severidad de Cáncer", layout="centered")
+st.title("🔬 Predicción de Severidad de Cáncer")
 
-# --- CONFIG: Ruta del modelo local --- 
-MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer.pkl"  # El enlace directo al modelo en GitHub
+# --- CONFIG: Ruta del modelo en GitHub ---
+MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer.pkl"
 
-# --- INTERFAZ DE USUARIO: Selección del tipo de modelo ---
+# --- Selección del origen del modelo ---
 model_choice = st.radio(
     "¿Cómo deseas cargar el modelo?",
-    ("Desde MLflow", "Desde GitHub", "Subir modelo manualmente")  # Cambiado "Desde archivo local" a "Desde GitHub"
+    ("Desde MLflow", "Desde GitHub", "Subir modelo manualmente")
 )
 
 model = None
 mlflow_error = None
 
-# --- Cargar modelo desde MLflow ---
+# --- Opción 1: MLflow ---
 if model_choice == "Desde MLflow":
     mlflow_uri = st.text_input(
-        "URL de MLflow (ngrok, opcional)",
+        "URL del servidor MLflow (ngrok)",
         value=os.environ.get("MLFLOW_TRACKING_URI", ""),
-        help="Pega aquí la URL de tu servidor MLflow de Colab/ngrok, ejemplo: https://1234.ngrok-free.app"
+        help="Ejemplo: https://abcd1234.ngrok-free.app"
     ).strip()
 
     if mlflow_uri:
         try:
             import mlflow
-            mlflow.set_tracking_uri(mlflow_uri)  # Establecer URI de MLflow
+            mlflow.set_tracking_uri(mlflow_uri)
             from mlflow.tracking import MlflowClient
             client = MlflowClient()
 
-            # Intentar obtener los experimentos (usando search_experiments en vez de list_experiments)
-            experiments = client.search_experiments()  # Obtener los experimentos
-
+            experiments = client.search_experiments()
             if experiments:
                 experiment_names = [exp.name for exp in experiments]
                 selected_exp = st.selectbox("Selecciona un experimento", experiment_names)
                 exp_id = [exp.experiment_id for exp in experiments if exp.name == selected_exp][0]
-                runs = client.search_runs(experiment_ids=[exp_id], order_by=["attributes.start_time desc"])
+                runs = client.search_runs([exp_id], order_by=["attributes.start_time desc"])
                 run_ids = [run.info.run_id for run in runs]
 
                 if run_ids:
-                    selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
+                    selected_run = st.selectbox("Selecciona un modelo (run ID)", run_ids)
                     model_uri = f"runs:/{selected_run}/model"
                     model = mlflow.sklearn.load_model(model_uri)
                     st.success(f"Modelo MLflow cargado: {selected_run}")
                 else:
-                    mlflow_error = "No hay modelos registrados para este experimento."
+                    mlflow_error = "⚠️ No hay modelos registrados en ese experimento."
             else:
-                mlflow_error = "No hay experimentos en el servidor MLflow."
+                mlflow_error = "⚠️ No se encontraron experimentos en MLflow."
         except Exception as e:
-            mlflow_error = f"No se pudo conectar o cargar modelo desde MLflow: {e}"
+            mlflow_error = f"❌ Error al conectar con MLflow: {e}"
 
-# --- Cargar modelo desde GitHub --- 
+# --- Opción 2: GitHub ---
 if model_choice == "Desde GitHub":
     try:
         st.info("Descargando modelo desde GitHub...")
-        # Descargar el modelo desde GitHub
         response = requests.get(MODEL_URL)
         if response.status_code == 200:
-            model = joblib.load(BytesIO(response.content))  # Cargar el modelo directamente desde el contenido descargado
-            st.success("Modelo local cargado correctamente desde GitHub.")
+            model = joblib.load(BytesIO(response.content))
+            st.success("✅ Modelo cargado correctamente desde GitHub.")
         else:
-            st.error(f"No se pudo descargar el modelo desde GitHub. Código de estado: {response.status_code}")
+            st.error(f"❌ Falló la descarga del modelo. Código: {response.status_code}")
     except Exception as e:
-        st.error(f"No se pudo cargar el modelo desde GitHub: {e}")
+        st.error(f"❌ Error al cargar modelo desde GitHub: {e}")
 
-# --- Subir un archivo de modelo manualmente ---
+# --- Opción 3: Subida manual ---
 if model_choice == "Subir modelo manualmente":
     uploaded_file = st.file_uploader("Sube tu modelo (.pkl)", type="pkl")
     if uploaded_file:
         try:
             model = joblib.load(uploaded_file)
-            st.success("Modelo cargado desde el archivo.")
+            st.success("✅ Modelo cargado desde archivo.")
         except Exception as e:
-            st.error(f"Error al cargar el modelo desde el archivo: {e}")
+            st.error(f"❌ Error al cargar el modelo: {e}")
 
-# --- Interfaz de usuario y predicción ---
+# --- Interfaz de predicción si hay modelo ---
 if model is not None:
-    # **Mantener el año como estaba antes**
-    year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
+    st.subheader("📋 Ingresar datos del paciente")
 
-    # Asegúrate de que todas las columnas que el modelo espera estén presentes
+    # Entradas del usuario (solo las 9 columnas necesarias)
     age = st.number_input("Edad del paciente", min_value=18, max_value=100, value=50)
-
+    year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024, value=2023)
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
     air_pollution = st.slider("Contaminación del aire", 0.0, 100.0, 50.0)
     alcohol_use = st.slider("Consumo de alcohol", 0.0, 100.0, 20.0)
     smoking = st.slider("Tabaquismo", 0.0, 100.0, 30.0)
     obesity_level = st.slider("Obesidad", 0.0, 100.0, 25.0)
-    treatment_cost = st.number_input("Costo del tratamiento (USD)", 0.0, 1000000.0, 20000.0)
+    treatment_cost = st.number_input("Costo del tratamiento (USD)", 0.0, 1_000_000.0, 20000.0)
     survival_years = st.slider("Años de supervivencia esperados", 0, 20, 5)
-    gender = st.selectbox("Género", ["Male", "Female", "Other"])
-    country = st.selectbox("País", ["USA", "UK", "India", "Russia", "China", "Brazil", "Pakistan", "Canada", "Germany"])
-    cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
-    cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
-    # Crear DataFrame asegurándonos de incluir todas las columnas necesarias
-    df = pd.DataFrame({
-        'Age': [age],  # Asegúrate de agregar 'Age'
-        'Year': [year],
-        'Genetic_Risk': [genetic_risk],
-        'Air_Pollution': [air_pollution],
-        'Alcohol_Use': [alcohol_use],
-        'Smoking': [smoking],
-        'Obesity_Level': [obesity_level],
-        'Treatment_Cost_USD': [treatment_cost],
-        'Survival_Years': [survival_years],
-        'Gender': [gender],
-        'Country_Region': [country],
-        'Cancer_Type': [cancer_type],
-        'Cancer_Stage': [cancer_stage]
-    })
+    # Crear DataFrame de entrada
+    input_df = pd.DataFrame([{
+        'Age': age,
+        'Year': year,
+        'Genetic_Risk': genetic_risk,
+        'Air_Pollution': air_pollution,
+        'Alcohol_Use': alcohol_use,
+        'Smoking': smoking,
+        'Obesity_Level': obesity_level,
+        'Treatment_Cost_USD': treatment_cost,
+        'Survival_Years': survival_years
+    }])
 
-    # **Transformación en One-Hot Encoding**
-    df_encoded = pd.get_dummies(df, drop_first=True)
-
-    # Verificar si el DataFrame contiene todas las columnas necesarias
-    model_columns = model.feature_names_in_  # Obtener las columnas que el modelo espera
-    missing_cols = [col for col in model_columns if col not in df_encoded.columns]
-
-    # Si faltan columnas, las agregamos con ceros
-    for col in missing_cols:
-        df_encoded[col] = 0
-
-    # Asegurarnos que las columnas estén en el orden correcto
-    df_encoded = df_encoded[model_columns]
-
-    # Realizar la predicción
-    if st.button("Predecir severidad"):
+    # Botón de predicción
+    if st.button("🔍 Predecir severidad"):
         try:
-            pred = model.predict(df_encoded)
-            st.success(f"La predicción de severidad es: {pred[0]}")
+            pred = model.predict(input_df)
+            st.success(f"🧬 Severidad estimada: {pred[0]}")
         except Exception as e:
-            st.error(f"Ocurrió un error al predecir: {e}")
+            st.error(f"❌ Error durante la predicción: {e}")
 else:
-    st.warning("No fue posible cargar ningún modelo para las predicciones.")
+    st.warning("⚠️ Carga un modelo antes de predecir.")
