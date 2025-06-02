@@ -52,7 +52,7 @@ if model_choice == "Desde GitHub":
             model = joblib.load(BytesIO(response.content))
             st.success("Modelo cargado correctamente desde GitHub.")
         else:
-            st.error(f"Fallo la descarga del modelo. Código: {response.status_code}")
+            st.error(f"Falló la descarga del modelo. Código: {response.status_code}")
     except Exception as e:
         st.error(f"Error al cargar modelo desde GitHub: {e}")
 
@@ -85,7 +85,7 @@ if model is not None:
     cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
     cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
-    # Crear DataFrame
+    # Crear DataFrame sin transformación manual
     input_df = pd.DataFrame([{
         "Age": age,
         "Year": year,
@@ -102,20 +102,10 @@ if model is not None:
         "Cancer_Stage": cancer_stage
     }])
 
-    # Codificación One-Hot
-    df_encoded = pd.get_dummies(input_df, drop_first=True)
-
-    # Alinear con columnas del modelo
-    model_columns = model.feature_names_in_
-    for col in model_columns:
-        if col not in df_encoded.columns:
-            df_encoded[col] = 0
-    df_encoded = df_encoded[model_columns]
-
-    # Predicción
+    # Predicción directa usando modelo de PyCaret
     if st.button("Predecir severidad"):
         try:
-            pred = model.predict(df_encoded)
+            pred = model.predict(input_df)
             st.success(f"Severidad estimada: {pred[0]}")
         except Exception as e:
             st.error(f"Error durante la predicción: {e}")
