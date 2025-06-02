@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
 import joblib
 import requests
 from io import BytesIO
@@ -8,14 +7,12 @@ from io import BytesIO
 st.set_page_config(page_title="Predicción de la Severidad del Cáncer", layout="centered")
 st.title("Predicción de Severidad del Cáncer")
 
-# Ruta del modelo en GitHub
 MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer.pkl"
 
-# Selección del origen del modelo
 model_choice = st.radio("¿Cómo deseas cargar el modelo?", ("Desde MLflow", "Desde GitHub", "Subir modelo manualmente"))
 model = None
 
-# Opción 1: MLflow
+# Cargar modelo según fuente
 if model_choice == "Desde MLflow":
     mlflow_uri = st.text_input("URL del servidor MLflow (ngrok)").strip()
     if mlflow_uri:
@@ -43,8 +40,7 @@ if model_choice == "Desde MLflow":
         except Exception as e:
             st.error(f"Error al conectar con MLflow: {e}")
 
-# Opción 2: GitHub
-if model_choice == "Desde GitHub":
+elif model_choice == "Desde GitHub":
     try:
         st.info("Descargando modelo desde GitHub...")
         response = requests.get(MODEL_URL)
@@ -52,12 +48,11 @@ if model_choice == "Desde GitHub":
             model = joblib.load(BytesIO(response.content))
             st.success("Modelo cargado correctamente desde GitHub.")
         else:
-            st.error(f"Falló la descarga del modelo. Código: {response.status_code}")
+            st.error(f"Fallo la descarga del modelo. Código: {response.status_code}")
     except Exception as e:
         st.error(f"Error al cargar modelo desde GitHub: {e}")
 
-# Opción 3: Subida manual
-if model_choice == "Subir modelo manualmente":
+elif model_choice == "Subir modelo manualmente":
     uploaded_file = st.file_uploader("Sube tu modelo (.pkl)", type="pkl")
     if uploaded_file:
         try:
@@ -66,11 +61,10 @@ if model_choice == "Subir modelo manualmente":
         except Exception as e:
             st.error(f"Error al cargar el modelo: {e}")
 
-# Interfaz para predecir
+# Interfaz de usuario
 if model is not None:
     st.subheader("Ingresar datos del paciente")
 
-    # Entradas del usuario
     age = st.number_input("Edad del paciente", 18, 100, 50)
     year = st.number_input("Año del diagnóstico", 2015, 2024, 2023)
     genetic_risk = st.slider("Riesgo genético", 0.0, 1.0, 0.5)
@@ -80,13 +74,13 @@ if model is not None:
     obesity_level = st.slider("Obesidad", 0.0, 100.0, 25.0)
     treatment_cost = st.number_input("Costo del tratamiento (USD)", 0.0, 1_000_000.0, 20000.0)
     survival_years = st.slider("Años de supervivencia esperados", 0, 20, 5)
+
     gender = st.selectbox("Género", ["Male", "Female", "Other"])
     country = st.selectbox("País", ["USA", "UK", "India", "Russia", "China", "Brazil", "Pakistan", "Canada", "Germany"])
     cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
     cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
-    # Crear DataFrame sin transformación manual
-    input_df = pd.DataFrame([{
+    input_data = pd.DataFrame([{
         "Age": age,
         "Year": year,
         "Genetic_Risk": genetic_risk,
@@ -102,12 +96,21 @@ if model is not None:
         "Cancer_Stage": cancer_stage
     }])
 
-    # Predicción directa usando modelo de PyCaret
-    if st.button("Predecir severidad"):
-        try:
-            pred = model.predict(input_df)
+    try:
+        input_encoded = pd.get_dummies(input_data, drop_first=True)
+
+        # Alinear columnas
+        expected_cols = model.feature_names_in_
+        for col in expected_cols:
+            if col not in input_encoded.columns:
+                input_encoded[col] = 0
+        input_encoded = input_encoded[expected_cols]
+
+        if st.button("Predecir severidad"):
+            pred = model.predict(input_encoded)
             st.success(f"Severidad estimada: {pred[0]}")
-        except Exception as e:
-            st.error(f"Error durante la predicción: {e}")
+    except Exception as e:
+        st.error(f"Error en la codificación o predicción: {e}")
+
 else:
     st.warning("Carga un modelo antes de predecir.")
