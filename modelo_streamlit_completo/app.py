@@ -5,8 +5,14 @@ import requests
 
 st.title("Predicción de Severidad de Cáncer")
 
-# --- MLflow: Interfaz para seleccionar modelo (experimento/run) ---
+# --- Configuración de rutas y URL del modelo ---
+# PyCaret usa automáticamente .pkl al cargar, así que NO pongas la extensión
+pkl_path = "modelo_streamlit_completo/modelo"
+modelo_url = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"
+
 model = None
+
+# --- Opción MLflow ---
 use_mlflow = st.checkbox("¿Cargar modelo desde MLflow?", value=False)
 
 if use_mlflow:
@@ -38,19 +44,19 @@ if use_mlflow:
         st.warning(f"No se pudo conectar o cargar modelo desde MLflow: {e}")
         st.info("Puedes desactivar la opción de MLflow y usar el modelo local.")
 
-# --- Si MLflow no está disponible, usa modelo.pkl local (descargándolo si hace falta) ---
+# --- Fallback: modelo local .pkl ---
 if model is None:
-    pkl_path = "modelo_streamlit_completo/modelo.pkl"
-    modelo_url = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"
-    if not os.path.exists(pkl_path):
+    # Descarga el modelo si no existe
+    if not os.path.exists(pkl_path + ".pkl"):
         os.makedirs(os.path.dirname(pkl_path), exist_ok=True)
         r = requests.get(modelo_url)
         if r.status_code == 200:
-            with open(pkl_path, "wb") as f:
+            with open(pkl_path + ".pkl", "wb") as f:
                 f.write(r.content)
             st.info("Modelo local descargado dinámicamente desde GitHub.")
         else:
             st.error(f"No se pudo descargar el modelo local ({r.status_code})")
+
     try:
         from pycaret.classification import load_model, predict_model
         model = load_model(pkl_path)
@@ -90,7 +96,6 @@ if model is not None:
         })
 
         try:
-            from pycaret.classification import predict_model
             result = predict_model(model, data=df)
             pred_label = result['prediction_label'][0] if 'prediction_label' in result.columns else result['Label'][0]
             st.success(f"La predicción de severidad es: {pred_label}")
