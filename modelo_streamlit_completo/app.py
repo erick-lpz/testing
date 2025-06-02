@@ -5,6 +5,8 @@ import pickle
 
 st.title("Predicción de Severidad de Cáncer")
 
+model = mlflow.pycaret.load_model("modelo_severidad_cancer")
+
 year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
 genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
 air_pollution = st.slider("Contaminación del aire", 0.0, 100.0, 50.0)
