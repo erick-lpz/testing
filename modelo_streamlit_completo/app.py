@@ -8,7 +8,7 @@ from io import BytesIO
 st.title("Predicción de Severidad de Cáncer")
 
 # --- CONFIG: Ruta del modelo local --- 
-MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"  # El enlace directo al modelo en GitHub
+MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer.pkl"  # El enlace directo al modelo en GitHub
 
 # --- INTERFAZ DE USUARIO: Selección del tipo de modelo ---
 model_choice = st.radio(
