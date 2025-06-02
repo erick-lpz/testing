@@ -8,51 +8,53 @@ st.title("Predicción de Severidad de Cáncer")
 # --- CONFIG: Ruta del modelo local ---
 MODEL_PATH = "modelo_streamlit_completo/modelo.pkl"  # Este es el modelo local
 
-# --- INPUT: URL de MLflow (desde la interfaz, no hardcodeado) ---
-mlflow_uri = st.text_input(
-    "URL de MLflow (ngrok, opcional)",
-    value=os.environ.get("MLFLOW_TRACKING_URI", ""),
-    help="Pega aquí la URL de tu servidor MLflow de Colab/ngrok, ejemplo: https://1234.ngrok-free.app"
-).strip()
+# --- INTERFAZ DE USUARIO: Selección del tipo de modelo ---
+model_choice = st.radio(
+    "¿Cómo deseas cargar el modelo?",
+    ("Desde MLflow", "Desde archivo local", "Subir modelo manualmente")
+)
 
 model = None
 mlflow_error = None
 
-# --- PRIMER INTENTO: Cargar modelo desde MLflow si se ingresa URL ---
-if mlflow_uri:
-    try:
-        import mlflow
-        mlflow.set_tracking_uri(mlflow_uri)  # Establecer URI de MLflow
-        from mlflow.tracking import MlflowClient
-        client = MlflowClient()
+# --- Cargar modelo desde MLflow ---
+if model_choice == "Desde MLflow":
+    mlflow_uri = st.text_input(
+        "URL de MLflow (ngrok, opcional)",
+        value=os.environ.get("MLFLOW_TRACKING_URI", ""),
+        help="Pega aquí la URL de tu servidor MLflow de Colab/ngrok, ejemplo: https://1234.ngrok-free.app"
+    ).strip()
 
-        # Intentar obtener los experimentos
-        experiments = client.list_experiments()  # Obtener los experimentos
-        if experiments:
-            experiment_names = [exp.name for exp in experiments]
-            selected_exp = st.selectbox("Selecciona un experimento", experiment_names)
-            exp_id = [exp.experiment_id for exp in experiments if exp.name == selected_exp][0]
-            runs = client.search_runs(experiment_ids=[exp_id], order_by=["attributes.start_time desc"])
-            run_ids = [run.info.run_id for run in runs]
-            
-            if run_ids:
-                selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
-                model_uri = f"runs:/{selected_run}/model"
-                model = mlflow.sklearn.load_model(model_uri)
-                st.success(f"Modelo MLflow cargado: {selected_run}")
+    if mlflow_uri:
+        try:
+            import mlflow
+            mlflow.set_tracking_uri(mlflow_uri)  # Establecer URI de MLflow
+            from mlflow.tracking import MlflowClient
+            client = MlflowClient()
+
+            # Intentar obtener los experimentos
+            experiments = client.list_experiments()  # Obtener los experimentos
+            if experiments:
+                experiment_names = [exp.name for exp in experiments]
+                selected_exp = st.selectbox("Selecciona un experimento", experiment_names)
+                exp_id = [exp.experiment_id for exp in experiments if exp.name == selected_exp][0]
+                runs = client.search_runs(experiment_ids=[exp_id], order_by=["attributes.start_time desc"])
+                run_ids = [run.info.run_id for run in runs]
+
+                if run_ids:
+                    selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
+                    model_uri = f"runs:/{selected_run}/model"
+                    model = mlflow.sklearn.load_model(model_uri)
+                    st.success(f"Modelo MLflow cargado: {selected_run}")
+                else:
+                    mlflow_error = "No hay modelos registrados para este experimento."
             else:
-                mlflow_error = "No hay modelos registrados para este experimento."
-        else:
-            mlflow_error = "No hay experimentos en el servidor MLflow."
-    except Exception as e:
-        mlflow_error = f"No se pudo conectar o cargar modelo desde MLflow: {e}"
+                mlflow_error = "No hay experimentos en el servidor MLflow."
+        except Exception as e:
+            mlflow_error = f"No se pudo conectar o cargar modelo desde MLflow: {e}"
 
-# --- FALLBACK: Modelo local (si MLflow no se usó, o falló) ---
-if model is None:
-    if mlflow_uri and mlflow_error:
-        st.warning(f"{mlflow_error}\n\nPuedes dejar vacío el campo de MLflow y usar el modelo local.")
-    
-    # Verifica si el archivo .pkl existe y se puede cargar
+# --- Cargar modelo desde archivo local ---
+if model_choice == "Desde archivo local":
     if os.path.exists(MODEL_PATH):
         try:
             model = joblib.load(MODEL_PATH)
@@ -61,8 +63,9 @@ if model is None:
             st.error(f"No se pudo cargar el modelo local: {e}")
     else:
         st.error(f"No se encontró el modelo local en {MODEL_PATH}. Sube el archivo modelo.pkl a esa ruta.")
-    
-    # Opción para subir un archivo .pkl manualmente si no se encuentra el modelo local
+
+# --- Subir un archivo de modelo manualmente ---
+if model_choice == "Subir modelo manualmente":
     uploaded_file = st.file_uploader("Sube tu modelo (.pkl)", type="pkl")
     if uploaded_file:
         try:
@@ -75,7 +78,7 @@ if model is None:
 if model is not None:
     # **Mantener el año como estaba antes**
     year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
-    
+
     # Resto de las variables de entrada
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
     air_pollution = st.slider("Contaminación del aire", 0.0, 100.0, 50.0)
@@ -105,7 +108,7 @@ if model is not None:
             'Cancer_Type': [cancer_type],
             'Cancer_Stage': [cancer_stage]
         })
-        
+
         try:
             pred = model.predict(df)
             st.success(f"La predicción de severidad es: {pred[0]}")
@@ -113,4 +116,3 @@ if model is not None:
             st.error(f"Ocurrió un error al predecir: {e}")
 else:
     st.warning("No fue posible cargar ningún modelo para las predicciones.")
-
