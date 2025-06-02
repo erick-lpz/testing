@@ -1,7 +1,6 @@
-
 import streamlit as st
 import pandas as pd
-import pickle
+from pycaret.classification import load_model, predict_model
 
 st.title("Predicción de Severidad de Cáncer")
 
@@ -18,9 +17,10 @@ country = st.selectbox("País", ["USA", "UK", "India", "Russia", "China", "Brazi
 cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
 cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
 
-if st.button("Predecir severidad"):
-    model = pickle.load(open("modelo.pkl", "rb"))
+# Carga el modelo SOLO UNA VEZ fuera del botón
+model = load_model("modelo_severidad_cancer")
 
+if st.button("Predecir severidad"):
     df = pd.DataFrame({
         'Year': [year],
         'Genetic_Risk': [genetic_risk],
@@ -36,12 +36,7 @@ if st.button("Predecir severidad"):
         'Cancer_Stage': [cancer_stage]
     })
 
-    df_encoded = pd.get_dummies(df)
-    columnas_esperadas = model.feature_names_in_
-    for col in columnas_esperadas:
-        if col not in df_encoded.columns:
-            df_encoded[col] = 0
-    df_encoded = df_encoded[columnas_esperadas]
-
-    prediction = model.predict(df_encoded)[0]
-    st.success(f"La predicción de severidad es: {prediction}")
+    # PyCaret se encarga del preprocesado, no necesitas hacer get_dummies ni igualar columnas
+    resultado = predict_model(model, data=df)
+    prediccion = resultado['prediction_label'][0] if 'prediction_label' in resultado.columns else resultado['Label'][0]
+    st.success(f"La predicción de severidad es: {prediccion}")
