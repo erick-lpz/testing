@@ -2,11 +2,13 @@ import streamlit as st
 import pandas as pd
 import os
 import joblib
+import requests
+from io import BytesIO
 
 st.title("Predicción de Severidad de Cáncer")
 
 # --- CONFIG: Ruta del modelo local ---
-MODEL_PATH = "modelo_streamlit_completo/modelo.pkl"  # Este es el modelo local
+MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"  # El enlace directo al modelo en GitHub
 
 # --- INTERFAZ DE USUARIO: Selección del tipo de modelo ---
 model_choice = st.radio(
@@ -32,8 +34,9 @@ if model_choice == "Desde MLflow":
             from mlflow.tracking import MlflowClient
             client = MlflowClient()
 
-            # Intentar obtener los experimentos
-            experiments = client.list_experiments()  # Obtener los experimentos
+            # Intentar obtener los experimentos (usando search_experiments en vez de list_experiments)
+            experiments = client.search_experiments()  # Obtener los experimentos
+
             if experiments:
                 experiment_names = [exp.name for exp in experiments]
                 selected_exp = st.selectbox("Selecciona un experimento", experiment_names)
@@ -53,16 +56,19 @@ if model_choice == "Desde MLflow":
         except Exception as e:
             mlflow_error = f"No se pudo conectar o cargar modelo desde MLflow: {e}"
 
-# --- Cargar modelo desde archivo local ---
+# --- Cargar modelo desde archivo local desde GitHub ---
 if model_choice == "Desde archivo local":
-    if os.path.exists(MODEL_PATH):
-        try:
-            model = joblib.load(MODEL_PATH)
-            st.success("Modelo local cargado correctamente.")
-        except Exception as e:
-            st.error(f"No se pudo cargar el modelo local: {e}")
-    else:
-        st.error(f"No se encontró el modelo local en {MODEL_PATH}. Sube el archivo modelo.pkl a esa ruta.")
+    try:
+        st.info("Descargando modelo desde GitHub...")
+        # Descargar el modelo desde GitHub
+        response = requests.get(MODEL_URL)
+        if response.status_code == 200:
+            model = joblib.load(BytesIO(response.content))  # Cargar el modelo directamente desde el contenido descargado
+            st.success("Modelo local cargado correctamente desde GitHub.")
+        else:
+            st.error(f"No se pudo descargar el modelo desde GitHub. Código de estado: {response.status_code}")
+    except Exception as e:
+        st.error(f"No se pudo cargar el modelo local desde GitHub: {e}")
 
 # --- Subir un archivo de modelo manualmente ---
 if model_choice == "Subir modelo manualmente":
