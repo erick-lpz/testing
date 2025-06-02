@@ -5,24 +5,19 @@ import requests
 
 st.title("Predicción de Severidad de Cáncer")
 
-# --- Configuración de rutas y URL del modelo ---
-# PyCaret usa automáticamente .pkl al cargar, así que NO pongas la extensión
-pkl_path = "modelo_streamlit_completo/modelo"
-modelo_url = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"
-
 model = None
+pkl_folder = "modelo_streamlit_completo/modelo"
+modelo_url_base = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo"
 
-# --- Opción MLflow ---
+# Opción MLflow
 use_mlflow = st.checkbox("¿Cargar modelo desde MLflow?", value=False)
 
 if use_mlflow:
     try:
         import mlflow
-        import mlflow.pycaret
-        from mlflow.tracking import MlflowClient
-
         MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        from mlflow.tracking import MlflowClient
         client = MlflowClient()
         experiments = client.list_experiments()
         if experiments:
@@ -33,8 +28,8 @@ if use_mlflow:
             run_ids = [run.info.run_id for run in runs]
             if run_ids:
                 selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
-                model_uri = f"runs:/{selected_run}/best_model"  # Cambia si usaste otro nombre en log_model
-                model = mlflow.pycaret.load_model(model_uri)
+                model_uri = f"runs:/{selected_run}/model"
+                model = mlflow.sklearn.load_model(model_uri)
                 st.success(f"Modelo MLflow cargado: {selected_run}")
             else:
                 st.error("No hay modelos registrados para este experimento.")
@@ -44,27 +39,33 @@ if use_mlflow:
         st.warning(f"No se pudo conectar o cargar modelo desde MLflow: {e}")
         st.info("Puedes desactivar la opción de MLflow y usar el modelo local.")
 
-# --- Fallback: modelo local .pkl ---
+# Fallback: modelo local .pkl + MLmodel (descarga automática)
 if model is None:
-    # Descarga el modelo si no existe
-    if not os.path.exists(pkl_path + ".pkl"):
-        os.makedirs(os.path.dirname(pkl_path), exist_ok=True)
-        r = requests.get(modelo_url)
+    # Descarga archivos si faltan
+    if not os.path.exists(pkl_folder):
+        os.makedirs(pkl_folder, exist_ok=True)
+    if not os.path.exists(os.path.join(pkl_folder, "model.pkl")):
+        r = requests.get(f"{modelo_url_base}/model.pkl")
         if r.status_code == 200:
-            with open(pkl_path + ".pkl", "wb") as f:
+            with open(os.path.join(pkl_folder, "model.pkl"), "wb") as f:
                 f.write(r.content)
-            st.info("Modelo local descargado dinámicamente desde GitHub.")
         else:
-            st.error(f"No se pudo descargar el modelo local ({r.status_code})")
-
+            st.error(f"No se pudo descargar model.pkl ({r.status_code})")
+    if not os.path.exists(os.path.join(pkl_folder, "MLmodel")):
+        r = requests.get(f"{modelo_url_base}/MLmodel")
+        if r.status_code == 200:
+            with open(os.path.join(pkl_folder, "MLmodel"), "wb") as f:
+                f.write(r.content)
+        else:
+            st.error(f"No se pudo descargar MLmodel ({r.status_code})")
     try:
-        from pycaret.classification import load_model, predict_model
-        model = load_model(pkl_path)
-        st.success("Modelo local cargado correctamente.")
+        import mlflow
+        model = mlflow.sklearn.load_model(pkl_folder)
+        st.success("Modelo local cargado correctamente con mlflow.sklearn.load_model.")
     except Exception as e:
         st.error(f"No se pudo cargar el modelo local: {e}")
 
-# --- Interfaz de usuario y predicción ---
+# Interfaz de usuario y predicción (igual que antes)
 if model is not None:
     year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
@@ -94,16 +95,10 @@ if model is not None:
             'Cancer_Type': [cancer_type],
             'Cancer_Stage': [cancer_stage]
         })
-
         try:
-            result = predict_model(model, data=df)
-            pred_label = result['prediction_label'][0] if 'prediction_label' in result.columns else result['Label'][0]
-            st.success(f"La predicción de severidad es: {pred_label}")
+            pred = model.predict(df)
+            st.success(f"La predicción de severidad es: {pred[0]}")
         except Exception as e:
-            try:
-                pred = model.predict(df)
-                st.success(f"La predicción de severidad es: {pred[0]}")
-            except Exception as e2:
-                st.error(f"Ocurrió un error al predecir: {e2}")
+            st.error(f"Ocurrió un error al predecir: {e}")
 else:
     st.error("No fue posible cargar ningún modelo para las predicciones.")
