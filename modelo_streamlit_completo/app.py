@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import os
+import requests
 
 st.title("Predicción de Severidad de Cáncer")
 
+# --- MLflow: Interfaz para seleccionar modelo (experimento/run) ---
 model = None
-
-# Preguntar al usuario si quiere usar MLflow o modelo local
+mlflow_loaded = False
 use_mlflow = st.checkbox("¿Cargar modelo desde MLflow?", value=False)
 
 if use_mlflow:
@@ -15,8 +16,8 @@ if use_mlflow:
         import mlflow.pycaret
         from mlflow.tracking import MlflowClient
 
-        # Cambia la URI por la de tu servidor de MLflow si es necesario
-        MLFLOW_TRACKING_URI = "http://localhost:5000"
+        # Cambia la URI por la de tu servidor MLflow/ngrok si es necesario
+        MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         client = MlflowClient()
         experiments = client.list_experiments()
@@ -28,27 +29,39 @@ if use_mlflow:
             run_ids = [run.info.run_id for run in runs]
             if run_ids:
                 selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
-                model_uri = f"runs:/{selected_run}/best_model"
+                model_uri = f"runs:/{selected_run}/best_model"  # Cambia "best_model" si usaste otro nombre en log_model
                 model = mlflow.pycaret.load_model(model_uri)
-                st.success(f"Modelo cargado desde MLflow: {selected_run}")
+                mlflow_loaded = True
+                st.success(f"Modelo MLflow cargado: {selected_run}")
             else:
                 st.error("No hay modelos registrados para este experimento.")
         else:
             st.error("No hay experimentos en el servidor MLflow.")
     except Exception as e:
         st.warning(f"No se pudo conectar o cargar modelo desde MLflow: {e}")
-        st.info("Puedes desactivar la opción de MLflow para usar el modelo local.")
-else:
+        st.info("Puedes desactivar la opción de MLflow y usar el modelo local.")
+
+# --- Si MLflow no está disponible, usa modelo.pkl local (descargándolo si hace falta) ---
+if model is None:
+    pkl_path = "modelo_streamlit_completo/modelo.pkl"
+    modelo_url = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo.pkl"
+    if not os.path.exists(pkl_path):
+        os.makedirs(os.path.dirname(pkl_path), exist_ok=True)
+        r = requests.get(modelo_url)
+        if r.status_code == 200:
+            with open(pkl_path, "wb") as f:
+                f.write(r.content)
+            st.info("Modelo local descargado dinámicamente desde GitHub.")
+        else:
+            st.error(f"No se pudo descargar el modelo local ({r.status_code})")
     try:
         from pycaret.classification import load_model, predict_model
-        if os.path.exists("modelo_streamlit_completo/modelo.pkl"):
-            model = load_model("modelo_streamlit_completo/modelo.pkl")
-            st.success("Modelo cargado desde modelo.pkl usando PyCaret.")
-        else:
-            st.error("No se encontró modelo.pkl en el directorio.")
+        model = load_model(pkl_path)
+        st.success("Modelo local cargado correctamente.")
     except Exception as e:
-        st.error(f"No se pudo cargar modelo.pkl con PyCaret: {e}")
+        st.error(f"No se pudo cargar el modelo local: {e}")
 
+# --- Interfaz de usuario y predicción ---
 if model is not None:
     year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
@@ -78,6 +91,7 @@ if model is not None:
             'Cancer_Type': [cancer_type],
             'Cancer_Stage': [cancer_stage]
         })
+
         try:
             from pycaret.classification import predict_model
             result = predict_model(model, data=df)
