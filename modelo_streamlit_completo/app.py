@@ -7,7 +7,6 @@ st.title("Predicción de Severidad de Cáncer")
 
 # --- MLflow: Interfaz para seleccionar modelo (experimento/run) ---
 model = None
-mlflow_loaded = False
 use_mlflow = st.checkbox("¿Cargar modelo desde MLflow?", value=False)
 
 if use_mlflow:
@@ -16,7 +15,6 @@ if use_mlflow:
         import mlflow.pycaret
         from mlflow.tracking import MlflowClient
 
-        # Cambia la URI por la de tu servidor MLflow/ngrok si es necesario
         MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         client = MlflowClient()
@@ -29,9 +27,8 @@ if use_mlflow:
             run_ids = [run.info.run_id for run in runs]
             if run_ids:
                 selected_run = st.selectbox("Selecciona un modelo (run)", run_ids)
-                model_uri = f"runs:/{selected_run}/best_model"  # Cambia "best_model" si usaste otro nombre en log_model
+                model_uri = f"runs:/{selected_run}/best_model"  # Cambia si usaste otro nombre en log_model
                 model = mlflow.pycaret.load_model(model_uri)
-                mlflow_loaded = True
                 st.success(f"Modelo MLflow cargado: {selected_run}")
             else:
                 st.error("No hay modelos registrados para este experimento.")
