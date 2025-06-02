@@ -1,22 +1,28 @@
 import streamlit as st
 import pandas as pd
 import os
-import requests
+import joblib
 
 st.title("Predicción de Severidad de Cáncer")
 
+# --- CONFIG: Ruta del modelo local (siempre usa esta ruta para el .pkl) ---
+MODEL_PATH = "modelo_streamlit_completo/modelo.pkl"
+
+# --- INPUT: URL de MLflow (desde la interfaz, no hardcodeado) ---
+mlflow_uri = st.text_input(
+    "URL de MLflow (ngrok, opcional)",
+    value=os.environ.get("MLFLOW_TRACKING_URI", ""),
+    help="Pega aquí la URL de tu servidor MLflow de Colab/ngrok, ejemplo: https://1234.ngrok-free.app"
+).strip()
+
 model = None
-pkl_folder = "modelo_streamlit_completo/modelo"
-modelo_url_base = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo"
+mlflow_error = None
 
-# Opción MLflow
-use_mlflow = st.checkbox("¿Cargar modelo desde MLflow?", value=False)
-
-if use_mlflow:
+# --- PRIMER INTENTO: Cargar modelo desde MLflow si se ingresa URL ---
+if mlflow_uri:
     try:
         import mlflow
-        MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
-        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        mlflow.set_tracking_uri(mlflow_uri)
         from mlflow.tracking import MlflowClient
         client = MlflowClient()
         experiments = client.list_experiments()
@@ -32,40 +38,26 @@ if use_mlflow:
                 model = mlflow.sklearn.load_model(model_uri)
                 st.success(f"Modelo MLflow cargado: {selected_run}")
             else:
-                st.error("No hay modelos registrados para este experimento.")
+                mlflow_error = "No hay modelos registrados para este experimento."
         else:
-            st.error("No hay experimentos en el servidor MLflow.")
+            mlflow_error = "No hay experimentos en el servidor MLflow."
     except Exception as e:
-        st.warning(f"No se pudo conectar o cargar modelo desde MLflow: {e}")
-        st.info("Puedes desactivar la opción de MLflow y usar el modelo local.")
+        mlflow_error = f"No se pudo conectar o cargar modelo desde MLflow: {e}"
 
-# Fallback: modelo local .pkl + MLmodel (descarga automática)
+# --- FALLBACK: Modelo local (si MLflow no se usó, o falló) ---
 if model is None:
-    # Descarga archivos si faltan
-    if not os.path.exists(pkl_folder):
-        os.makedirs(pkl_folder, exist_ok=True)
-    if not os.path.exists(os.path.join(pkl_folder, "model.pkl")):
-        r = requests.get(f"{modelo_url_base}/model.pkl")
-        if r.status_code == 200:
-            with open(os.path.join(pkl_folder, "model.pkl"), "wb") as f:
-                f.write(r.content)
-        else:
-            st.error(f"No se pudo descargar model.pkl ({r.status_code})")
-    if not os.path.exists(os.path.join(pkl_folder, "MLmodel")):
-        r = requests.get(f"{modelo_url_base}/MLmodel")
-        if r.status_code == 200:
-            with open(os.path.join(pkl_folder, "MLmodel"), "wb") as f:
-                f.write(r.content)
-        else:
-            st.error(f"No se pudo descargar MLmodel ({r.status_code})")
-    try:
-        import mlflow
-        model = mlflow.sklearn.load_model(pkl_folder)
-        st.success("Modelo local cargado correctamente con mlflow.sklearn.load_model.")
-    except Exception as e:
-        st.error(f"No se pudo cargar el modelo local: {e}")
+    if mlflow_uri and mlflow_error:
+        st.warning(f"{mlflow_error}\n\nPuedes dejar vacío el campo de MLflow y usar el modelo local.")
+    if os.path.exists(MODEL_PATH):
+        try:
+            model = joblib.load(MODEL_PATH)
+            st.success("Modelo local cargado correctamente.")
+        except Exception as e:
+            st.error(f"No se pudo cargar el modelo local: {e}")
+    else:
+        st.error(f"No se encontró el modelo local en {MODEL_PATH}. Sube el archivo modelo.pkl a esa ruta.")
 
-# Interfaz de usuario y predicción (igual que antes)
+# --- Interfaz de usuario y predicción ---
 if model is not None:
     year = st.number_input("Año del diagnóstico", min_value=2015, max_value=2024)
     genetic_risk = st.slider("Riesgo genético (0 a 1)", 0.0, 1.0, 0.5)
@@ -101,4 +93,4 @@ if model is not None:
         except Exception as e:
             st.error(f"Ocurrió un error al predecir: {e}")
 else:
-    st.error("No fue posible cargar ningún modelo para las predicciones.")
+    st.warning("No fue posible cargar ningún modelo para las predicciones.")
