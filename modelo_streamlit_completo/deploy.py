@@ -5,7 +5,7 @@ import requests
 from io import BytesIO
 
 st.set_page_config(page_title="Predicción de Severidad de Cáncer", layout="centered")
-st.title("🔬 Predicción de la Severidad del Cáncer")
+st.title("Predicción de la Severidad del Cáncer")
 
 MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer_svs.pkl"
 
@@ -63,7 +63,7 @@ elif model_choice == "Subir modelo manualmente":
 
 # === Formulario de entrada de datos ===
 if model:
-    st.subheader("📋 Ingresar datos del paciente")
+    st.subheader("Ingresar datos del paciente")
 
     input_data = {}
 
