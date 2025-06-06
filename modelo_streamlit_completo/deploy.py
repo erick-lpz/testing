@@ -4,17 +4,17 @@ import joblib
 import requests
 from io import BytesIO
 
-st.set_page_config(page_title="Deploy", layout="centered")
-st.title("Predicción de la Severidad del Cáncer")
+st.set_page_config(page_title="Predicción de Severidad de Cáncer", layout="centered")
+st.title("🔬 Predicción de la Severidad del Cáncer")
 
 MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer.pkl"
 
 model_choice = st.radio("¿Cómo deseas cargar el modelo?", ("Desde MLflow", "Desde GitHub", "Subir modelo manualmente"))
 model = None
 
-# Cargar modelo según fuente
+# === Cargar el modelo ===
 if model_choice == "Desde MLflow":
-    mlflow_uri = st.text_input("URL del servidor MLflow (ngrok)").strip()
+    mlflow_uri = st.text_input("🔗 URL del servidor MLflow (por ejemplo, vía ngrok)").strip()
     if mlflow_uri:
         try:
             import mlflow
@@ -31,10 +31,10 @@ if model_choice == "Desde MLflow":
                 if run_ids:
                     selected_run = st.selectbox("Selecciona un modelo (run ID)", run_ids)
                     model_uri = f"runs:/{selected_run}/model"
-                    model = mlflow.sklearn.load_model(model_uri)
+                    model = mlflow.pyfunc.load_model(model_uri)
                     st.success(f"Modelo MLflow cargado: {selected_run}")
                 else:
-                    st.warning("No hay modelos en ese experimento.")
+                    st.warning("No hay modelos disponibles en ese experimento.")
             else:
                 st.warning("No se encontraron experimentos.")
         except Exception as e:
@@ -48,69 +48,49 @@ elif model_choice == "Desde GitHub":
             model = joblib.load(BytesIO(response.content))
             st.success("Modelo cargado correctamente desde GitHub.")
         else:
-            st.error(f"Fallo la descarga del modelo. Código: {response.status_code}")
+            st.error(f"Error al descargar el modelo. Código de estado: {response.status_code}")
     except Exception as e:
         st.error(f"Error al cargar modelo desde GitHub: {e}")
 
 elif model_choice == "Subir modelo manualmente":
-    uploaded_file = st.file_uploader("Sube tu modelo (.pkl)", type="pkl")
+    uploaded_file = st.file_uploader("Sube tu modelo `.pkl`", type="pkl")
     if uploaded_file:
         try:
             model = joblib.load(uploaded_file)
-            st.success("Modelo cargado desde archivo.")
+            st.success("Modelo cargado exitosamente desde archivo.")
         except Exception as e:
             st.error(f"Error al cargar el modelo: {e}")
 
-# Interfaz de usuario
-if model is not None:
-    st.subheader("Ingresar datos del paciente")
+# === Formulario de entrada de datos ===
+if model:
+    st.subheader("📋 Ingresar datos del paciente")
 
-    age = st.number_input("Edad del paciente", 18, 100, 50)
-    year = st.number_input("Año del diagnóstico", 2015, 2024, 2023)
-    genetic_risk = st.slider("Riesgo genético", 0.0, 1.0, 0.5)
-    air_pollution = st.slider("Contaminación del aire", 0.0, 100.0, 50.0)
-    alcohol_use = st.slider("Consumo de alcohol", 0.0, 100.0, 20.0)
-    smoking = st.slider("Tabaquismo", 0.0, 100.0, 30.0)
-    obesity_level = st.slider("Obesidad", 0.0, 100.0, 25.0)
-    treatment_cost = st.number_input("Costo del tratamiento (USD)", 0.0, 1_000_000.0, 20000.0)
-    survival_years = st.slider("Años de supervivencia esperados", 0, 20, 5)
+    input_data = {}
 
-    gender = st.selectbox("Género", ["Male", "Female", "Other"])
-    country = st.selectbox("País", ["USA", "UK", "India", "Russia", "China", "Brazil", "Pakistan", "Canada", "Germany"])
-    cancer_type = st.selectbox("Tipo de cáncer", ["Lung", "Colon", "Skin", "Prostate", "Leukemia", "Cervical", "Liver"])
-    cancer_stage = st.selectbox("Etapa del cáncer", ["Stage I", "Stage II", "Stage III", "Stage IV"])
+    # Variables numéricas
+    input_data['Genetic_Risk'] = st.number_input("Riesgo Genético", 0.0, 10.0, 5.0)
+    input_data['Air_Pollution'] = st.number_input("Contaminación del Aire", 0.0, 10.0, 5.0)
+    input_data['Alcohol_Use'] = st.number_input("Consumo de Alcohol", 0.0, 10.0, 5.0)
+    input_data['Smoking'] = st.number_input("Tabaquismo", 0.0, 10.0, 5.0)
+    input_data['Obesity_Level'] = st.number_input("Obesidad", 0.0, 10.0, 5.0)
+    input_data['Treatment_Cost_USD'] = st.number_input("Costo del Tratamiento (USD)", 0.0, 100000.0, 50000.0)
+    input_data['Survival_Years'] = st.number_input("Años de Supervivencia", 0.0, 15.0, 5.0)
 
-    input_data = pd.DataFrame([{
-        "Age": age,
-        "Year": year,
-        "Genetic_Risk": genetic_risk,
-        "Air_Pollution": air_pollution,
-        "Alcohol_Use": alcohol_use,
-        "Smoking": smoking,
-        "Obesity_Level": obesity_level,
-        "Treatment_Cost_USD": treatment_cost,
-        "Survival_Years": survival_years,
-        "Gender": gender,
-        "Country_Region": country,
-        "Cancer_Type": cancer_type,
-        "Cancer_Stage": cancer_stage
-    }])
+    # Etapa del cáncer
+    stage = st.radio("Etapa del Cáncer", ["Stage 0", "Stage I", "Stage II", "Stage III", "Stage IV"])
+    input_data['Cancer_Stage'] = stage
 
-    try:
-        input_encoded = pd.get_dummies(input_data, drop_first=True)
+    # Tipo de cáncer (one-hot manual)
+    tipos = ["Cervical", "Colon", "Leukemia", "Liver", "Lung", "Prostate", "Skin"]
+    tipo_seleccionado = st.selectbox("Tipo de Cáncer", tipos)
+    for tipo in tipos:
+        input_data[f'Cancer_Type_{tipo}'] = (tipo == tipo_seleccionado)
 
-        # Alinear columnas
-        expected_cols = model.feature_names_in_
-        for col in expected_cols:
-            if col not in input_encoded.columns:
-                input_encoded[col] = 0
-        input_encoded = input_encoded[expected_cols]
-
-        if st.button("Predecir severidad"):
-            pred = model.predict(input_encoded)
-            st.success(f"Severidad estimada: {pred[0]}")
-    except Exception as e:
-        st.error(f"Error en la codificación o predicción: {e}")
-
-else:
-    st.warning("Carga un modelo antes de predecir.")
+    # Botón de predicción
+    if st.button("🔍 Predecir Severidad"):
+        try:
+            df_input = pd.DataFrame([input_data])
+            prediction = model.predict(df_input)
+            st.success(f"🔮 Severidad estimada: **{prediction[0]}**")
+        except Exception as e:
+            st.error(f"Error al hacer la predicción: {e}")
