@@ -4,8 +4,8 @@ import joblib
 import requests
 from io import BytesIO
 
-st.set_page_config(page_title="Predicción de la Severidad del Cáncer", layout="centered")
-st.title("Predicción de Severidad del Cáncer")
+st.set_page_config(page_title="Deploy", layout="centered")
+st.title("Predicción de la Severidad del Cáncer")
 
 MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer.pkl"
 
