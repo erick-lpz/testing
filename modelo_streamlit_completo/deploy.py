@@ -87,10 +87,10 @@ if model:
         input_data[f'Cancer_Type_{tipo}'] = (tipo == tipo_seleccionado)
 
     # Botón de predicción
-    if st.button("🔍 Predecir Severidad"):
+    if st.button("Predecir Severidad"):
         try:
             df_input = pd.DataFrame([input_data])
             prediction = model.predict(df_input)
-            st.success(f"🔮 Severidad estimada: **{prediction[0]}**")
+            st.success(f"Severidad estimada: **{prediction[0]}**")
         except Exception as e:
             st.error(f"Error al hacer la predicción: {e}")
