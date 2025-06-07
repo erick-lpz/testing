@@ -14,7 +14,7 @@ model = None
 column_order = None
 is_pycaret = False
 
-# === Cargar el modelo ===
+# Cargar el modelo
 if model_choice == "Desde MLflow":
     mlflow_uri = st.text_input("URL del servidor MLflow (ngrok)").strip()
     if mlflow_uri:
@@ -86,7 +86,7 @@ elif model_choice == "Subir modelo manualmente":
             if os.path.exists("uploaded_model"):
                 os.remove("uploaded_model")
 
-# === Formulario de entrada de datos ===
+# Formulario de entrada de datos
 if model:
     st.subheader("Ingresar datos del paciente")
 
@@ -105,7 +105,7 @@ if model:
     stage = st.radio("Etapa del Cáncer", ["Stage 0", "Stage I", "Stage II", "Stage III", "Stage IV"])
     input_data['Cancer_Stage'] = stage
 
-    # Tipo de cáncer (one-hot manual)
+    # Tipo de cáncer (one-hot)
     tipos = ["Cervical", "Colon", "Leukemia", "Liver", "Lung", "Prostate", "Skin"]
     tipo_seleccionado = st.selectbox("Tipo de Cáncer", tipos)
     for tipo in tipos:
@@ -120,9 +120,8 @@ if model:
                 prediccion = resultado['prediction_label'].iloc[0]
                 st.success(f"Severidad estimada: **{prediccion}**")
             else:
-                # Para modelos MLflow (scikit-learn, xgboost, etc.)
+                # Para modelos MLflow
                 prediction = model.predict(df_input)
-                # Si es un array o lista, tomar el primer valor
                 if hasattr(prediction, '__iter__'):
                     prediccion = prediction[0]
                 else:
