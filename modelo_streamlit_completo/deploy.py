@@ -93,25 +93,25 @@ if model:
     input_data = {}
 
     # Variables numéricas
-    input_data['Genetic_Risk'] = st.number_input("Riesgo Genético", 0.0, 10.0, 5.0)
-    input_data['Air_Pollution'] = st.number_input("Contaminación del Aire", 0.0, 10.0, 5.0)
-    input_data['Alcohol_Use'] = st.number_input("Consumo de Alcohol", 0.0, 10.0, 5.0)
+    input_data['Genetic_Risk'] = st.number_input("Riesgo genético", 0.0, 10.0, 5.0)
+    input_data['Air_Pollution'] = st.number_input("Contaminación del aire", 0.0, 10.0, 5.0)
+    input_data['Alcohol_Use'] = st.number_input("Consumo de alcohol", 0.0, 10.0, 5.0)
     input_data['Smoking'] = st.number_input("Tabaquismo", 0.0, 10.0, 5.0)
     input_data['Obesity_Level'] = st.number_input("Obesidad", 0.0, 10.0, 5.0)
-    input_data['Treatment_Cost_USD'] = st.number_input("Costo del Tratamiento (USD)", 0.0, 100000.0, 50000.0)
-    input_data['Survival_Years'] = st.number_input("Años de Supervivencia", 0.0, 15.0, 5.0)
+    input_data['Treatment_Cost_USD'] = st.number_input("Costo del tratamiento (USD)", 0.0, 100000.0, 50000.0)
+    input_data['Survival_Years'] = st.number_input("Años de supervivencia", 0.0, 15.0, 5.0)
 
     # Etapa del cáncer
-    stage = st.radio("Etapa del Cáncer", ["Stage 0", "Stage I", "Stage II", "Stage III", "Stage IV"])
+    stage = st.radio("Etapa del cáncer", ["Stage 0", "Stage I", "Stage II", "Stage III", "Stage IV"])
     input_data['Cancer_Stage'] = stage
 
     # Tipo de cáncer (one-hot)
     tipos = ["Cervical", "Colon", "Leukemia", "Liver", "Lung", "Prostate", "Skin"]
-    tipo_seleccionado = st.selectbox("Tipo de Cáncer", tipos)
+    tipo_seleccionado = st.selectbox("Tipo de cáncer", tipos)
     for tipo in tipos:
         input_data[f'Cancer_Type_{tipo}'] = (tipo == tipo_seleccionado)
 
-    if st.button("Predecir Severidad"):
+    if st.button("Predecir severidad"):
         try:
             df_input = pd.DataFrame([input_data])
             if is_pycaret:
