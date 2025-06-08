@@ -8,7 +8,7 @@ st.set_page_config(page_title="Predicción de Severidad de Cáncer", layout="cen
 st.title("Predicción de la Severidad del Cáncer")
 
 # MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer_svs.pkl"
-MoDEL_URL ="https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer_svs%20(1).pkl"
+MODEL_URL ="https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer_svs%20(1).pkl"
 
 model_choice = st.radio("¿Cómo deseas cargar el modelo?", ("Desde MLflow", "Desde GitHub", "Subir modelo manualmente"))
 model = None
