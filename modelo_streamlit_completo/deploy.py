@@ -85,8 +85,6 @@ if model:
         'Alcohol_Use': st.number_input("Consumo de alcohol", 0.0, 10.0, 5.0),
         'Smoking': st.number_input("Tabaquismo", 0.0, 10.0, 5.0),
         'Obesity_Level': st.number_input("Obesidad", 0.0, 10.0, 5.0),
-        'Treatment_Cost_USD': st.number_input("Costo del tratamiento (USD)", 0.0, 100000.0, 50000.0),
-        'Survival_Years': st.number_input("Años de supervivencia", 0.0, 15.0, 5.0),
         'Cancer_Stage': st.radio("Etapa del cáncer", ["Stage 0", "Stage I", "Stage II", "Stage III", "Stage IV"])
     }
 
