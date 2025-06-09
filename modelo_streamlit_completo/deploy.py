@@ -3,24 +3,29 @@ import pandas as pd
 import requests
 import os
 
+# Configuración de la página
 st.set_page_config(page_title="Predicción de Severidad de Cáncer", layout="centered")
 st.title("Predicción de la Severidad del Cáncer")
 
+# URL del modelo y mapeo de severidad
 MODEL_URL = "https://github.com/erick-lpz/testing/raw/main/modelo_streamlit_completo/modelo_severidad_cancer_svs%20(1).pkl"
 severidad_map = {0: "Baja", 1: "Media", 2: "Alta"}
 
+# Variables de estado del modelo
 model = None
 is_pycaret = False
 
+# Selector de método de carga del modelo
 opcion = st.radio("¿Cómo deseas cargar el modelo?", ("Desde MLflow", "Desde GitHub", "Subir manualmente"))
 
+# Interfaz para cargar modelo desde MLflow
 if opcion == "Desde MLflow":
-    uri = st.text_input("URL del servidor MLflow (ngrok)").strip()
-    if uri:
+    mlflow_uri = st.text_input("URL del servidor MLflow (ngrok)").strip()
+    if mlflow_uri:
         try:
             import mlflow
             from mlflow.tracking import MlflowClient
-            mlflow.set_tracking_uri(uri)
+            mlflow.set_tracking_uri(mlflow_uri)
             client = MlflowClient()
             exps = client.search_experiments()
             if exps:
@@ -33,12 +38,13 @@ if opcion == "Desde MLflow":
                     model = mlflow.pyfunc.load_model(f"runs:/{run}/model")
                     st.success(f"Modelo cargado: {run}")
                 else:
-                    st.warning("No hay modelos en ese experimento.")
+                    st.warning("No hay modelos en ese experimento")
             else:
-                st.warning("No se encontraron experimentos.")
+                st.warning("No hay modelos disponibles en ese experimento")
         except Exception as e:
             st.error(f"Error MLflow: {e}")
 
+# Interfaz para cargar modelo desde GitHub
 elif opcion == "Desde GitHub":
     try:
         st.info("Descargando modelo desde GitHub...")
@@ -50,10 +56,11 @@ elif opcion == "Desde GitHub":
         is_pycaret = True
         os.remove("model.pkl")
         if os.path.exists("model"): os.remove("model")
-        st.success("Modelo cargado desde GitHub.")
+        st.success("Modelo cargado desde GitHub")
     except Exception as e:
         st.error(f"Error: {e}")
 
+# Interfaz para cargar modelo subido manualmente
 elif opcion == "Subir manualmente":
     file = st.file_uploader("Sube tu modelo `.pkl`", type="pkl")
     if file:
@@ -65,10 +72,11 @@ elif opcion == "Subir manualmente":
             is_pycaret = True
             os.remove("user_model.pkl")
             if os.path.exists("user_model"): os.remove("user_model")
-            st.success("Modelo cargado correctamente.")
+            st.success("Modelo cargado correctamente")
         except Exception as e:
             st.error(f"Error: {e}")
 
+# Entrada de datos del paciente
 if model:
     st.subheader("Datos del paciente")
     datos = {
@@ -86,6 +94,7 @@ if model:
     for t in ["Cervical", "Colon", "Leukemia", "Liver", "Lung", "Prostate", "Skin"]:
         datos[f'Cancer_Type_{t}'] = (t == tipo)
 
+    # Predicción y muestra resultado
     if st.button("Predecir severidad"):
         try:
             df = pd.DataFrame([datos])
